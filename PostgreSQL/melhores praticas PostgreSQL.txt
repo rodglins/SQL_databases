@@ -1,0 +1,1558 @@
+Anotações de aula
+DIO
+Conceitos e melhores práticas com bancos de dados PostgreSQL
+07/2021
+
+
+
+Conceitos:
+
+Dados, registros soltos, recolhidos e armazenados sem nenhum tipo de tratamento.
+
+Informações: estruturação de dados, organização de dado. conjunto de dados relacionados entre si que geram valor, que criam sentido aos dados. material do conhecimento.
+
+modelo relacional:
+
+modelar: criar modelo. modelo explica as caracteristicas e o comportamento de um programa ou softare. Ferramentas que vao demonstrar como as estruturas estão organizadas e se relacionam entre vi.
+
+representado que tds os dados serao armazenados em tabelas com linhas e colunas
+
+relacional:> modelo mais comum, que classifica e organiza as infroamções em tabelas com linhas e colunas. as linhas, ou tuplas, sao os dados organizados sao, os valores.
+
+telefones -->> proprietarios
+
+tabelas: conjuntos de dados dispostos em colunas e linhas referentes a um objetivo comum. as colunas sao consideradas como campos da tabela, como atributos da tabela. as linhas de uma tabela sao chamadas tmb de tuplas.
+
+tabelas:
+-coisas tangiveis: elementos fisicos, carros produto animal
+-funcoes: perfis de usuario, status de compra
+-eventos ou ocorrencias: produtos de um pedido, historico de dados
+
+colunas importantes
+-chave primaria/pk: conjunto de um ou mais campos que nunca se repetem. identidade da tabela. sao utilizados como indice de referencia na criação de relacionamentos entre tabelas.
+
+-chave estrangeira / fk : valor de referencia a uma pk de outra tabela ou da mesma tabela para criar um relacionamento.
+
+sistema de gerenciamento de banco de dados sgbd
+conjunto de programas ou softwares resposnsavwia pwlo gerenciamento de um banco de dados. programas que facilitam a adm de um banco de dados
+
+PostgreSQL
+sistema de gerenciuamento de banco de dados objeto relacional teve inicio no depto de ciencia da cmop da univ california em berkeley 1986. Open source.
+
+Arquitetura multiprocessos:
+qdo instala varios processos sao iniciados dentro do servidor. atende diversas tarefas. gestao de memoria. varios processos cuidando de varias taferas. 
+
+modelo cliente/servidor 
+cliente(interface grafica/terminal/aplicação) >>servidor
+
+caracteristicas:
+-opensource
+-point in time recovery (problema consegue restaurar até minutos antes do problema)
+-linguagem procedural com suporte a varias linguagens (perl, python, etc)
+-views, functions, procedures, triggers
+-consultas completas e common table expressions cte
+-suporte a dados geograficos postGIS
+-Controle de recorrencia de multiversao
+
+instlação e documentaçao:
+www.postgresql.org
+www.postgresql.org/downloads
+www.postgresql.org/docs/manuals/
+
+
+
+---
+
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sudo apt-get update
+sudo apt-get -y install postgresql
+
+---
+
+pg_createcluster -d /home/postgres/aula 12 aula --start
+
+---
+
+#
+# Setup the repository
+#
+
+# Install the public key for the repository (if not done previously):
+sudo curl https://www.pgadmin.org/static/packages_pgadmin_org.pub | sudo apt-key add
+
+# Create the repository configuration file:
+sudo sh -c 'echo "deb https://ftp.postgresql.org/pub/pgadmin/pgadmin4/apt/$(lsb_release -cs) pgadmin4 main" > /etc/apt/sources.list.d/pgadmin4.list && apt update'
+
+#
+# Install pgAdmin
+#
+
+# Install for both desktop and web modes:
+sudo apt install pgadmin4
+
+# Install for desktop mode only:
+sudo apt install pgadmin4-desktop
+
+# Install for web mode only: 
+sudo apt install pgadmin4-web 
+
+# Configure the webserver, if you installed pgadmin4-web:
+sudo /usr/pgadmin4/bin/setup-web.sh
+
+---
+
+senha pgadmin windows : root
+
+--
+
+arquivo: postgresql.conf
+arquivo onde estao definias e armazenadas todas as configurações do servicor Postgresql. alguns parametros so podem ser alterados com uma reinicialização do banco de dados. a view pg_settings, acesseda por dentro do banco de dados, guarda todas as configurações atuais.
+Ao acessar a view pg_settings é possivel visualizar todas as configurações atuais:
+SELECT name, setting
+FROM pq_settings;
+ou
+SHOW [parâmetro];
+SHOW [maxconections];
+
+localização:
+por padrao, encontra-se dentro do diretorio PGDATA definido no momento da inicialização do cluster de banco de dados.
+
+No ubuntu, se instalado do rep oficial, o local fica em /etc/postgresql/11/[nomedocluster]/postgresql.conf
+
+configurações:
+
+Config de conexao:
+LISTEN_ADDRESSES: Endereços tcp/ip das interfaces que o servidor postgresql vai escutar liberar conexoes
+PORT : a porta tcp que o postgre vai ouvir, por padrao 5432
+MAX_CONNECTIONS numero maximo de conexoes simultaneas no servidor postgre
+SUPERUSER_RESERVED_CONNECTIONS: numero de conexoes slots reservadas para conexoes ao banco de dados de super usuarios
+
+Config de autenticação>:
+AUTHENTICATION_TIMEOUT: Tempo maximo em segundos para o cliente conseguir uma conexão com o servidor.
+PASSWORD_ENCRYPTION: Algoritmo de criptografia das senhas dos novos usuários criados no banco de dados
+SSL: Habilita conexao criptografada por ssl (somente se o postgre foi compilado com suporte ssl
+
+Config de memoria
+-SHARED_BUFFERS: tamanho da memoria compartilhada do servidor postgre para cache/buffer de tabelas, indices e demais relações
+-WORK-MEM: Tamanho da memoria para operações de agrupamento e ordenação(ORDER BY, DISTINCT,MERGE JOINS)
+-MAINTENANCE_WORK_MEM: tamanho da memoria para operações como VACUUM, INDEX, ALTER TABLE.
+
+---
+
+arquivo: pg_hba.conf
+
+Arquivo responsavel pelo controle de autenticação do usuarios no serivdor postgre. o formato do arquivo pode ser
+
+metodos de autenticação:
+TRUST(Conexao sem senha)
+REJECT(rejeita)
+MD5(Criptografia)
+PASSWORD(senha sem cripto)
+GSS(generic security service application program interface) 
+SSPI(security support provider interface(windows)
+KRB5 (Kerberos V5)
+IDENT (utiliza o usuario do sistema operacional do cliente via ident server)
+PEER (utiliza o usuario do sistema operacional do cliente)
+LDAP(Ldap server)
+RADIU (RADIUS SERVER)
+CERT(Aut via cert ssl do cliente)
+PAM (pluggable authentication modules)
+
+----
+
+
+pg_ident.conf
+
+responsavel por mapear os usuarios do sistema operacional com os usuarios do banco de dados. localizaçõa no diretorio de dados PGDATA de sua instalação. A opção ident deve ser utilizada no arquivo pg_hba.conf
+
+Aqui coloca os usarios e seus acessos.
+
+=========
+
+Comandos administrativos
+
+Ubuntu:
+pg_lsclusters (lista todos)
+pg_createcluster version clustername (cria um novo )
+pg_dropcluster version cluster (apaga)
+pg_ctlcluster version cluster action (action: start, stop, status, restart)
+
+----
+
+Windows:
+Services: postgresql>botao direito> todos os comandos(start, stop,..)
+
+===
+
+Binários do Postgree
+createdb
+createuser
+dropdp
+dropuser
+initdb
+pg_ctl
+pg_basebackup
+pg_dump / pg_dumpall (extrai em formato de texto informações daquelo momento no banco de dados, não serve para restaurar)
+pg_restore
+psql
+reindexdb
+vacuumdb (reorganiza tds as tabelas)
+
+===
+
+Arquitetura / hierarquia
+
+cluster: coleção de bancos de dados que compartilha as mesmas configurações (arquivos de configuração) do postgre e do sistema operacional (porta, listen_addresses, etc)
+
+Banco de dados(database)
+conjunto de schemas com seus objetos/relações (tabelas, funcoes , views, etc)
+
+Schema
+Conjunto de objetos/relacoes (tabelas, funcoes, views, etc)
+
+OBS: No postgre banco de dados e schema são diferentes, já no mysql são iguais.
+
+http://127.0.0.1/pgadmin4/browser/#
+rodglins@gmail.com
+nhola69
+
+
+===
+
+PGAdmin4
+
+www.pgadmin.org
+www.pgadmin.org/download
+www.pgadmin.org/docs/pgadmin4/latest/index.html
+
+liberar acesso ao cluster em postgresql.conf
+
+liberar acesso ao cluster para o usuario do banco de dados em pg_hba.conf
+
+criar/editar usuarios
+
+aula
+5435
+/home/postgres/aula
+
+---
+
+#listen_addresses = 'localhost' (Nunca usar *)
+
+--
+
+root@DESKTOP-BU5D0SA:/home/rodglins# cd /
+root@DESKTOP-BU5D0SA:/# cd /etc/postgresql/
+root@DESKTOP-BU5D0SA:/etc/postgresql# ls
+12  13
+root@DESKTOP-BU5D0SA:/etc/postgresql# cd 12
+root@DESKTOP-BU5D0SA:/etc/postgresql/12# ls
+aula  main
+root@DESKTOP-BU5D0SA:/etc/postgresql/12# cd aula
+root@DESKTOP-BU5D0SA:/etc/postgresql/12/aula# ls
+conf.d  environment  pg_ctl.conf  pg_hba.conf  pg_ident.conf  postgresql.conf  start.conf
+root@DESKTOP-BU5D0SA:/etc/postgresql/12/aula# vi postgresql.conf
+root@DESKTOP-BU5D0SA:/etc/postgresql/12/aula# vi postgresql.conf
+root@DESKTOP-BU5D0SA:/etc/postgresql/12/aula# pg_ctlcluster 12 aula start
+Removed stale pid file.
+root@DESKTOP-BU5D0SA:/etc/postgresql/12/aula# pg_ctlcluster
+Error: Usage: /usr/bin/pg_ctlcluster <version> <cluster> <action> [-- <pg_ctl options>]
+root@DESKTOP-BU5D0SA:/etc/postgresql/12/aula# pg_lsclusters
+
+---
+
+padrão:
+gres-# psql -h 127.0.0.1 -p 5432 -U postgres
+
+
+ALTER USER postgres PASSWORD '123';
+\q (sai da conexão)
+
+SELECT 1; (testa a conexão)
+
+=========
+
+Object>create>server group
+server group>create>server 
+
+CREATE DATABASE auladb;
+
+---
+
+USERS:
+
+users/roles/groups
+Roles(papeis ou funcoes, users(usuarios) e grupo de usuarios sao contas, perfis de atuação em um banco de dados que possuem permissoes em comum especificas
+Nas versoes anterior do postgre8.1, usuarios e roles tinham comportamentos diferentes. atualmente roles e users sao alias. 
+É possivel que roles pertencam a outras roles;
+
+roles: Administradores, professores, alunos, etc.
+
+role:Daniel(pertence a role professores)
+role: Roberto (pertence a role professores)
+role: Tiago (pertente a role de alunos)
+
+CREATE ROLE name [ [WITH] option [...]]
+
+options :
+SUPERUSER | NOSUPERUSER #padrao é nosuperuser, superuser permissoes irrestitas.
+|CREATEDB | NOCREATEDB #permissao de criar bd
+|CREATEROLE | NOCREATEROLE #a role pode criar novas roles
+|INHERIT | NOINHERIT # se ativado sempre que pertencer a outra role herda as permições;
+|LOGIN | NOLOGIN #pode ou nao se conectar ao bd
+|REPLICATION |NOR.. # permisssao de fazer backup, ou replicação standby,
+|BYPASSRLS |NOBY..  # para quem trabalha com segurança
+|CONNECTION LIMIT connlimit  #determina qtas conecsoes simultaneas sua role pode ter
+|[ENCRYPTED]PASSWORD "password" | PASSWORD NULL # para operações de backup, restore, por padrao já criptograva. mas pode trocar
+| VALID UNTIL 'timestamp" #até qdo essa role tem acesso, ex: acesso de 5 dias
+| IN ROLE role_name [,...] # duplicada, diz que o novo usuario, a in role pertencera a role que esta indicando
+|IN GROUP idem 
+|ROLE idem
+|ADMIN idem #admin usado com role terão acessos adminstrativos na nova role. professores pode adminstrar roles dentro deste grupo de roles
+|USER idem #depreciada 
+|SYSID uid #duplicada
+
+CREATE ROLE administradores CREATEDB CREATEROLE INHERIT NOLOGIN REPLICATION BYPASSRLS CONNECTION LIMIT-1;
+
+CRETE ROLE professores NOCREATEDB NOCREATEROLE INHERIT NOLOGIN NOBYPASSRLS CONNECTION LIMIT 10; 
+
+CREATE ROLE alunos NOCREATEDB NOCREATEROLE INHERIT NOLOGIN NOBYPASSRLS CONNECTION LIMIT 90;
+
+
+Associação entre roles
+Quando uma role assume as permissoes de outra role. Necesssario opção INHERIT
+
+No momento de criação da role:
+-IN ROLE (Passa a pertencer a role informada)
+-ROLE (a role informada passa a pertencer a nova role)
+
+Ou apos a criação da role:
+-GRANT [role a ser concedida) TO [role a assumir as permissoes]
+
+CREATE ROLE daniel LOGIN CONNECTION LIMIT 1 PASSWORD '123' IN ROLE professores;
+#A role daniel passa a assumir as permissoes da role professores
+
+
+CREATE ROLE daniel LOGIN CONNECTION LIMIT 1 PASSWORD '123' ROLE professores;
+#A role professores passa a fazer parte da role daniel assumindo suas permissoes;
+
+CRETE ROLE daniel LOGIN CONNECTION LIMIT 1 PASSWORD '123';
+GRANT professores TO daniel;
+
+-
+
+Desassociar membros entre roles
+
+REVOKE [role que sera revogada] FROM [role que tera suas permissoes revogadas]
+REVOKE professores FROM daniel #daniel perde as permissoes
+
+Alterando uma role
+ALTER ROLE role_specification [WITH] option [...]
+
+option:
+
+(the same as CREATE ROLE)
+
+--
+
+excluindo uma role
+DROP ROLE role_specification;
+
+---
+
+
+psql
+\du #mostra as roles criadas
+SELECT * FROM pg_roles; (mostra todas as roles)
+
+
+--
+
+Administrando acessos (GRANT)
+sao privilegios de acesso aos objetos do banco de dados
+
+privilegios:
+--tabela
+--coluna
+--sequence
+--database
+--domain
+-foreign data wrapper
+--foreign server
+--function
+--language
+--large object
+--schema
+--tablespace
+--type
+
+
+
+DATABASE
+GRANT{{CREATE|CONNECT|TEMPORARY|TEMP}[,...]|ALL [PRIVILEGES]}
+TO role_scpecification [,...][WITH GRANT OPTION]
+
+SCHEMA
+GRANT[[CREATE|USAGE}[,...]|ALL[PRIVILEGES]}
+ON SCHEMA schema_name[,...]
+TO role_specification[,...][WITH GRANT OPTION]
+
+TABLE
+GRANT{{SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER}
+ON{[TABLE]table_name[,...]
+| ALL TABLES IN SCHEMA schema_name[,...]}
+TO role_specification[,...][WITH GRANT OPTION]
+
+---
+
+REVOKE
+retira as permissoes da role
+
+REVOKE[GRANT OPTION FOR]
+{{CREATE|CONNECT|TEMPORARY|TEMP}[,...]|ALL [PRIVILEGES]}
+ON DATABASE database_name[,...]
+FROM {[GROUP] role_name|PUBLIC}[,...]
+[CASCADE|RESTRICT]
+
+REVOKE[GRANT OPTION FOR]
+{{CREATE|USAGE}[,...]|ALL [PRIVILEGES]}
+ON SCHEMA schema_name[,...]
+FROM {[GROUP] role_name|PUBLIC}[,...]
+[CASCADE|RESTRICT]
+
+REVOKE[GRANT OPTION FOR]
+{{SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER}[,...]|ALL [PRIVILEGES]}
+ON TABLE table_name[,...]
+FROM {[GROUP] role_name|PUBLIC}[,...]
+[CASCADE|RESTRICT]
+
+
+REVOGANDO TODAS AS PERMISSOES(SIMPLIFICADO)
+
+REVOKE ALL ON ALL TABLES IN SCHEMA [schema] FROM [role];
+REVOKE ALL ON SCHEMA [schema] FROM [role];
+REVOKE ALL ON DATABASE [database] FROM [role];
+
+--
+
+Objetos e comandos do banco de dados
+
+database
+é o banco de dados
+grupo de chemas e seus objetos como tabelas, types, views, funcoes, etc
+seus schemas e objetos nao podem ser compartilhados ente vi.
+cada databease é separado um do outro compartilhando apenas usuarios/roles e configurações do cluster postgresql
+
+Schemas
+É um grupo de objetos, como tabelas, types, views, funcoes, etc
+é possivel relacionar objetos ente diversos schemas
+por exemplo, schema public, e schema curso podem ter tabelas com o mesmo nome (teste por exemplo) relacionando-se entre si.
+
+Objetos
+sao as tabelas, views, types, sequencias, pertencem aos schemas.
+
+
+Database
+CREATE DATABASE name
+ [ [ WITH ] [ OWNER [=] user_name ]
+ [ TEMPLATE [=] template ] 
+ [ ENCODING [=] encoding ]
+ [ LOCALE [=] locale ]
+ [ LC_COLLATE [=] lc_collate ] 
+ [ LC_CTYPE [=] lc_ctype ]
+ [ TABLESPACE [=] tablespace_name ] #unidade localizado dentro disco
+ [ ALLOW_CONNECTIONS [=] allowconn ] #aceita conexoes
+ [ CONNECTION LIMIT [=] connlimit ] 
+ [ IS_TEMPLATE [=] istemplate ] ]
+
+
+ALTER DATABASE name RENAME TO new_name
+ALTER DATABASE name OWNER TO {new_owner|CURRENT_USER|SESSION_USER}
+ALTER DATABASE name SET TABLESPACE new_tablespace
+
+DROP DATABASE[nome]
+
+SCHEMA
+CREATE SCHEMA schema_name [AUTORIZATION role_specification]
+
+ALTER SCHEMA name RENAME TO nre_name
+ALTER SCHEMA name OWNER TO {new_owner|CURRENT_USER|SESSION_USER}
+
+DROP SCHEMA [nome]
+
+Melhores práticas
+Sempre que for criar colocar if not existis, para evitar erros:
+
+CREATE SCHEMA IF NOT EXISTS schema_name [AUTHORIZATION role_specification]
+DROP SCHEMA IF EXISTIS[nome];
+
+
+
+
+
+
+----
+
+
+tabelas, colunas e tipos de dados
+
+ tabelas
+conjunto de dados dispostos em colunas e linhas referentes a um objetivo comum
+as colunas sao consideradas como campos da tabela, como atributos da tabela
+as linhas de uma tabela sao chamadas de tuplas.
+
+para evitar duplicação de registros devemos criar chave primaria
+
+PK, CHAVE PRIMARIA
+no conceito de modelo de dados relacional e obedendo as regras de normalização, uma pk e um conjunto de um ou mais campos que nunca se repetem em uma tabela e que seuss valores garantem a integrida do dado unico e a utilização do mesmo como referencia para o relacionamento entre demais tabela
+
+não pode haver duas ocorrencias de uma mesma entidade com o mesmo contudo na pl
+a chave primaria nçao pode ser composto por atributo opcional, ou seja, atribuito que aceite nulo
+os atributos identificadores dem ser o conjunto minimo que pode indentificar cada instancia de uma entidade
+nao deve ser usadas chaves externas
+nao deve conter informação volatil.
+
+ex: pk: nome, marca, tamanho
+
+Foreign key/chave estrnageira FK
+Campo ou conj de campos que sao refencias de chaves primarias de outras tabela ou da mesma tabela. Sua principal funcao é garantir a integridade referencial entre as tabelas
+
+cliente :
+cpf (pk)
+nome 
+cliente
+
+produto:
+numero de serie(pk)
+nome 
+valor
+
+pedido:
+numero (pk)
+cliente cpf (fk)
+produto numero de serie(fk)
+valor
+desconto
+
+----
+
+pedido tem como primary key (id) é uma boa pratica para evitar conflitos.
+
+tipos de dados:
+
+
+bigint int8 signed eight-byte integer
+bigserial serial8 autoincrementing eight-byte integer
+bit [ (n) ] fixed-length bit string
+bit varying [ (n) ] varbit
+[ (n) ]
+variable-length bit string
+boolean bool logical Boolean (true/false)
+box rectangular box on a plane
+bytea binary data (“byte array”)
+character [ (n) ] char [ (n) ] fixed-length character string
+character varying [ (n) ] varchar
+[ (n) ]
+variable-length character string
+cidr IPv4 or IPv6 network address
+circle circle on a plane
+date calendar date (year, month, day)
+double precision float8 double precision floating-point number
+(8 bytes)
+inet IPv4 or IPv6 host address
+integer int, int4 signed four-byte integer
+interval [ fields ] [ (p) ] time span
+json textual JSON data
+jsonb binary JSON data, decomposed
+line infinite line on a plane
+lseg line segment on a plane
+macaddr MAC (Media Access Control) address
+macaddr8 MAC (Media Access Control) address
+(EUI-64 format)
+money currency amount
+numeric [ (p, s) ] decimal [ (p,
+s) ]
+exact numeric of selectable precision
+path geometric path on a plane
+pg_lsn PostgreSQL Log Sequence Number
+pg_snapshot user-level transaction ID snapshot
+point geometric point on a plane
+polygon closed geometric path on a plane
+real float4 single precision floating-point number
+(4 bytes)
+smallint int2 signed two-byte integer
+smallserial serial2 autoincrementing two-byte integer
+serial serial4 autoincrementing four-byte integer
+text variable-length character string
+time [ (p) ] [ without time
+zone ]
+time of day (no time zone)
+time [ (p) ] with time zone timetz time of day, including time zone
+timestamp [ (p) ] [ without
+time zone ]
+date and time (no time zone)
+timestamp [ (p) ] with time
+zone
+timestamptz date and time, including time zone
+tsquery text search query
+tsvector text search document
+txid_snapshot user-level transaction ID snapshot
+(deprecated; see pg_snapshot)
+uuid universally unique identifier
+xml XML dat
+
+
+
+
+
+Numericos
+
+-ame Storage Size Description Range
+-smallint 2 bytes small-range integer -32768 to +32767
+-integer 4 bytes typical choice for integer -2147483648 to
++2147483647
+-bigint 8 bytes large-range integer -9223372036854775808 to
++9223372036854775807
+-decimal variable user-specified precision,
+exact
+up to 131072 digits before
+the decimal point; up to
+16383 digits after the
+decimal point
+-numeric variable user-specified precision,
+exact
+up to 131072 digits before
+the decimal point; up to
+16383 digits after the
+decimal point
+-real 4 bytes variable-precision, inexact 6 decimal digits precision
+-double precision 8 bytes variable-precision, inexact 15 decimal digits precision
+-smallserial 2 bytes small autoincrementing
+integer
+1 to 32767
+-serial 4 bytes autoincrementing integer 1 to 2147483647
+-bigserial 8 bytes large autoincrementing
+integer
+1 to 9223372036854775807
+
+
+Caracteres
+
+
+Name Description
+character varying(n), varchar(n) variable-length with limit
+character(n), char(n) fixed-length, blank padded
+text variable unlimited length
+
+
+Datas
+
+Name Storage Size Description Low Value High Value Resolution
+-timestamp [ (p) ] [ without time zone ]
+8 bytes both date and
+time (no time
+zone)
+4713 BC 294276 AD 1 microsecond
+
+-timestamp
+[ (p) ]
+8 bytes both date and
+time, with time
+zone
+4713 BC 294276 AD 1 microsecond
+with time
+zone
+
+-date 4 bytes date (no time of
+day)
+4713 BC 5874897 AD 1 day
+
+-time
+[ (p) ]
+[ without
+time
+zone ]
+8 bytes time of day (no
+date)
+00:00:00 24:00:00 1 microsecond
+
+-time
+[ (p) ]
+with time
+zone
+12 bytes time of day (no
+date), with time
+zone
+00:00:00+1559 24:00:00-1559 1 microsecond
+
+-interval
+[ fields ]
+[ (p) ]
+16 bytes time interval -178000000
+years
+178000000
+years
+1 microsecond
+
+--
+
+
+Booleanos
+boolean 1 byte state of true or false
+
+
+
+--
+
+boas praticas, para evitar consumo de recursos, utilizar a quantidade necessária, por exemplo cep tem um numero especifico de numeros, digito da conta corrente, qdo há uma espeficição para o numero a ser inserido.
+
+---
+
+DML 
+Data manipulation language
+INSERT, UPDATE, DELETE, SELECT
+O select, pode ser DML ou DQL
+
+DDL
+Data Definition Language
+linguagem de definição de dados,
+CREATE, ALTER, DROP
+
+CREATE [objeto][nome do objeto][opções];
+ALTER  [objeto][nome do objeto][opções];
+DROP  [objeto][nome do objeto][opções];
+
+CREATE DATABASE dadosbancarios;
+ALTER DATABASE dadosbancarios OWNER TO diretoria;
+DROP DATABASE dadosbancarios;
+
+CREATE SCHEMA IF NOT EXISTS bancos;
+ALTER SCHEMA bancos OWNER TO diretoria;
+DROP SCHEMA IF EXISTS bancos;
+
+CREATE TABLE IF NOT EXISTS nomedatabela(
+nomedocampo tipo regras opções,
+nomedocampo tipo regras opções,
+nomedocampo tipo regras opções,
+);
+ALTER TABLE nomedatabela opções;
+DROP TABLE nomedatabela;
+
+EX:
+CREATE TABLE IF NOT EXISTS banco (
+codigo INTEGER PRIMARY KEY,
+nome VARCHAR(50) NOT NULL,
+data_criacao TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS banco (
+codigo INTEGER,
+nome VARCHAR(50) NOT NULL,
+data_criacao TIMESTAMP NOT NULL DEFAULT NOW(),
+PRIMARY KEY (codigo)
+);
+
+ALTER TABLE banco ADD COLUMN tem_poupanca BOOLEAN;
+
+DROP TABLE IF EXISTS banco;
+
+
+------------------------
+
+INSERT:
+
+INSERT INTO nomedatabela (camposdatabela,)
+VALUES (valoresdeacordocom a ordem dos campos acima,);
+
+INSERT INTO nomedatabela (camposdatabela,)
+SELECT valoresdeacordocoma ordem dos campos acima,;
+
+EX: 
+
+INSERT INTO banco(codigo, nome, data_criacao,)
+VALUES (100,'Banco do Brasil',now());
+
+INSERT INTO banco(codigo, nome, data_criacao)
+SELECT 100, 'Banco do Brasil',now();
+
+UPDATE
+
+UPDATE nomedatabela SET 
+campo1 = novovalordocampo1,
+campo2 = novovalordocampo2,
+...
+WHERE + condições
+
+Muito cuidado com os updates. sempre utilize-os com condição. se não utilizar where todos serão alterados.
+
+EX:
+
+UPDATE banco SET 
+codigo = 500
+WHERE codigo = 100;
+
+UPDATE banco SET 
+data_criacao= now()
+WHERE data_criacao IS NULL;
+
+--------------------------------
+
+DELETE
+
+DELETE FORM nomedatabela
+WHERE + condições
+
+OBS: SEMPRE UTILIZE CONDIÇÕES, SENÃO DELETA TUDO.
+
+DELETE FROM banco
+WHERE codigo = 512;
+
+DELETE FROM banco
+WHERE NOME = "Conta Digital';
+
+------------
+
+SELECT
+
+SELECT camposdatabela
+FROM nomedatabela
+WHERE + condições
+
+BOAS PRATICAS: Evite sempre que puder o SELECT * (Usar select id, consome menos recursos)
+
+Ex:
+
+SELECT codigo, nome
+FROM banco
+WHERE data_criacao > '2019-10-15 15:00:00';
+
+
+=====
+
+IDEMPOTENCIA: Propriedade que algumas ações/operações possuem possibilitando as de serem executadas diversas vezes sem alterar o resultado apos a aplicação inicial
+
+IF EXISTS
+Comandos pertinentes ao DDL e DML:
+
+Melhores praticas em DDL
+
+Importante as tabelas possuirem campos que realmente serão utilizados e que sirvam de atributo direto a um objetivo em comum.
+
+Criar/acrescentar colunas que são "atributos basicos" do objeto;
+Exemplo: tabela CLIENTE: coluna TELEFONE/coluna AGENCIA_BANCARIA
+
+Cuidado com regras(constraints) validações, se é numero, tamanho, 
+
+Cuidado com o excesso de FKs
+
+Cuidado com o tamanho indevido de colunas. Exemplo: coluna CEP VARCHAR(255)
+
+-----
+
+DML - CRUD (create read update delete)
+
+SELECT 
+SELECT (campos,)
+FROM tabela
+condições
+
+EXEMPLO:
+
+SELECT numero,nome FROM banco;
+SELECT numero,nome FROM banco WHERE ativo IS TRUE;
+SELECT nome FROM cliente WHERE email LIKE '%gmail.com' #% é qualquer coisa antes. LIKE busca o campo, no caso qualquer email finalizado com gmail)
+
+Cuidado:
+SELECT numero FROM agencia
+WHERE banco_numero IN (SELECT numero FROM banco WHERE nome ILIKE '%Bradesco%'
+
+ILIKE: não difere maiusculas e minusculas
+
+'%Bradesco%'qualquer palavra que contenha bradesco no meio.
+
+Cuidado com esse tipo de select: Não é boa pratica usar IN pois utiliza mais recursos. Utiliza diversos buffers, pode trazer diversos erros.
+
+
+----
+
+SELECT (Condições: WHERE/AND/OR)
+
+WHERE (coluna/condição):
+=
+>/ >=
+</<=
+<>/!=
+LIKE
+ILIKE
+IN
+
+Primeira condição sempre WHERE. Demais condições AND ou OR.
+
+---
+
+SELECT - Idempotencia
+
+Cuidado!! Não é uma boa pratica:
+
+SELECT (campos,)
+FROM tabela 1
+WHERE EXISTS (
+SELECT (campo,)
+FROM tabela2
+WHERE campo1 = valor1
+[AND/OR campoN = valorN]
+);
+
+MELHOR PRATICA UTILIZAR O LEFT JOIN.
+
+------
+
+SELECT * (evitar)
+
+Select * = selectfull = 11kB
+Select id = id = 6 kB
+
+-----
+
+
+INSERT
+
+INSERT (camposdatabela,) VALUES (valores,);
+INSERT (camposdatabela,) SELECT (valores,);
+
+--
+
+INSERT -IDEMPOTENCIA
+
+Não é uma boa pratica::
+INSERT INTO agencia (banco_numero, numero, nome) VALUES (341,1,'Centro da cidade');
+
+Não é uma boa pratica::
+INSERT INTO agencia (banco_numero, numero,nome)
+SELECT 341,1,'Centro da cidade'
+WHERE NOT EXISTS (SELECT banco_numero,numero, nome FROM agencia WHERE banco_numero=341 AND numero = 1 AND nome = 'Centro da cidade');
+
+ON CONFLICT
+
+Boa prática:
+INSERT INTO agencia (banco_numero, numero, nome) VALUES (341,1,'Centro da cidade') ON CONFLICT (banco_numero,numero) DO NOTHNG;
+
+
+UPDATE
+UPDATE(tabela) SET campo1 = novo_valor WHERE (condição)
+==>>jamais utilizar sem WHERE
+
+DELETE
+DELETE FROM (tabela SET campo1 = novo_valor WHERE (condição)
+==>>jamais utilizar sem WHERE
+
+------
+
+TRUNCATE
+Esvazia a tabela
+
+Muito cuidado!!
+
+TRUNCATE tabela ONLY name [*] [,...]
+[ RESTART IDENTITY | CONTINUE IDENTITY #é o padrão] [CASCADE | RESTRICT #é o padrão]
+
+CONTINUE IDENTITY: tabela com 10 registros, se tem um numero sequencial, sempre somando 1, autocomplemento, se é continue identity, continua pelo ultimo numero, mesmo que a tabela seja apagada)
+Caso queira RESTAR IDENTITY para 1, não é recomendado pois quebra relações do banco de dados.;
+
+CASCADE Ele apaga tudo, mesmo com referencia, inclusive apaga as referencias; (MUITO PERIGOSO)
+RESTRICT #é o padrão, respeita se vc tem FK
+
+----
+
+==========================================
+
+Funções agregadas:
+
+as mais usadas:
+
+AVG
+COUNT (opção HAVING)
+MAX
+MIN
+SUM
+
+---------------
+
+Table 9.58. Aggregate Functions for Statistics
+Function
+Description
+Partial
+Mode
+
+corr ( Y double precision, X double precision ) → double
+precision
+Computes the correlation coefficient.
+Yes
+
+covar_pop ( Y double precision, X double precision ) → double
+precision
+Computes the population covariance.
+Yes
+
+covar_samp ( Y double precision, X double precision ) → double
+precision
+Computes the sample covariance.
+Yes
+
+regr_avgx ( Y double precision, X double precision ) → double
+precision
+Computes the average of the independent variable, sum(X)/N.
+Yes
+
+regr_avgy ( Y double precision, X double precision ) → double
+precision
+Computes the average of the dependent variable, sum(Y)/N.
+Yes
+
+regr_count ( Y double precision, X double precision ) → bigint Yes
+
+Entre outras ...
+
+
+(PostgreSQL 14beta2 Documentation. The PostgreSQL Global Development Group, pg 346, 2021)
+
+---------
+
+
+===========================
+
+Relacionamento entre tabelas (JOINS)
+
+Unir uma ou mais tabelas
+
+JOIN
+LEFT JOIN
+RIGHT JOIN
+FULL JOIN
+CROSS JOIN
+
+JOIN(INNER)
+
+Campos que referenciam entre as tabelas. somente os dados que pertencem a esse relação.
+
+SELECT tabela_1.campos,tabela_2.campos
+FROM tabela_1
+JOIN tabela_2
+ON tabela_2.campo = tabela1.campo
+
+Melhor pratica: utilizar campo FK na tabela_2 e PK na tabela_1. Caso contrario consome recursos desnecessários.
+
+---
+
+LEFT JOIN (OUTER)
+
+tabelas a esqueda e tabelas a direita. tabelas que estão no relacionamento à esquerda obtidas inteiras, e se possuem registros relacionados na outra tabela eles são recuperados. do contrário, não.
+
+SELECT tabela_1.campos,tabela_2.campos
+FROM tabela_1
+LEFT JOIN tabela_2
+ON tabela_2.campo = tabela1.campo
+
+---
+
+RIGHT JOIN (OUTER)
+
+Semelhante a LEFT, porém prioriza as tabelas a direita.
+
+SELECT tabela_1.campos,tabela_2.campos
+FROM tabela_1
+RIGHT JOIN tabela_2
+ON tabela_2.campo = tabela1.campo
+
+--
+
+
+FULL JOIN
+todas as relações possíveis, e todos os dados, mesmo sem relação.
+
+OBS.: Não é recomendada, pois traz mais registros que o necessário
+
+SELECT tabela_1.campos,tabela_2.campos
+FROM tabela_1
+FULL JOIN tabela_2
+ON tabela_2.campo = tabela1.campo
+
+----
+
+
+CROSS JOIN
+
+Todos os dados de uma tabela serão cruzadas com todos os dados da tabela referencia no CROSS JOIN criando uma matriz.
+
+USO EM CASOS EXTREMOS, NÃO É RECOMENDADO
+
+SELECT tabela_1.campos,tabela_2.campos
+FROM tabela_1
+CROSS JOIN tabela_2
+
+==================
+
+DESAFIO Transações de cada cliente E TIPOS DE TRANSACAO DE CADA CLIENTE
+
+
+
+--------------
+
+Common Table Expressions - CTE
+
+Forma auxiliar de organizar statements, blocos de codigos para consultas muito grandes, gerando tabelas temporarias, e criando relacionamento entre elas.
+
+Dentro dos statements, podem ter SELECT,INSERT,UPDATE,DELETE
+
+--
+
+WITH STATEMENTS
+
+WITH [nome1] AS (
+SELECT (campos,)
+FROM tabela_A
+[WHERE]
+),[nome2] AS (
+SELECT (campos,)
+FROM tabela_B
+[WHERE]
+)
+SELECT [nome1].(campos,),[nome2].(campos,)
+FROM [nome1]
+JOIN [nome2] ...
+
+==================================
+VIEWS
+
+--boa pratica de segurança, não oferece acesso direto a tabela
+
+São visões. são camadas para as tabelas. sao alias para uma ou mais queries. aceitam comandos de SELECT, INSERT, UPDATE e DELETE.
+
+
+!!Cuidado com OR REPLACE, é a idempotencia, view com algumas colunas, e esquece que a view esta criada, acaba substuindo uma view já criada. usar com cautela
+
+TEMPORARY: funciona somente na seção. ao fechar será deletada.
+RECURSIVE: select que retorna a propria view
+CASCADED/LOCAL: sao validações para os comandos insert, update, delete da view.
+
+
+-----
+IDEMPOTENCIA:
+
+--numero, nome, ativo sao campos da view, e não da consulta interna da view, a view assumiu os campos da view:
+
+CREATE OR REPLACE VIEW vw_banco AS (
+SELECT numero, nome, ativo  
+FROM banco
+);
+SELECT numero, nome, ativo
+FROM vw_bancos;
+
+--cria campos especificos para view:
+CREATE OR REPLACE VIEW vw_bancos (banco_numero, banco_nome, banco_ativo) AS ( 
+SELECT numero, nome, ativo
+FROM banco
+);
+SELECT banco_numero, banco_nome, banco_ativo
+FROM vw_bancos;
+
+obs. não é definido data type pois ele assume o tipo de dado da consulta.
+
+-----------
+
+INSERT,UPDATE e DELETE:
+
+CREATE OR REPLACE VIEW vw_banco AS (
+SELECT numero, nome, ativo
+FROM banco
+);
+
+SELECT numero, nome, ativo
+FROM vw_bancos;
+
+--Funcionam apenas para views com apenas 1 tabela
+
+INSERT INTO vw_bancos (numero, nome, ativo) VALUES (100, 'Banco CEM', TRUE);
+
+UPDATE vw_bancos SET nome = 'Banco 100' WHERE numero = 100;
+
+DELETE FROM vw_bancos WHERE numero = 100;
+
+---
+
+TEMPORARY
+
+CREATE OR REPLACE TEMPORARY VIEW vw_banco AS (
+SELECT numero, nome, ativo
+FROM banco
+);
+
+SELECT numero, nome, ativo
+FROM vw_bancos;
+
+--VIEW presente apenas na sessão do usuário. Se desconectar e, ao se conectar novamente a VIEW não estará disponível. Funciona apenas na janela ativa, no terminal , na janela ativa, ...
+
+---
+
+RECURSIVE
+
+--view que o comando no interior dela chama ela mesma, especie de loop.
+
+CREATE OR REPLACE RECURSIVE VIEW (nome_da_view)(campos_da_view) AS (
+SELECT base
+UNION ALL
+SELECT campos
+FROM tabela_base
+JOIN (nome_da_view)
+
+--Obrigatório a existência dos campos da VIEW
+--obrigatório o UNION ALL
+
+--UNION agrupa unifica resultura resultados iguais
+--UNION ALL -- não unifica
+
+
+CREATE TABLE IF NOT EXISTS funcionarios (
+id SERIAL NOT NULL,
+nome VARCHAR(50),
+gerente INTEGER,
+PRIMARY KEY (id),
+FOREIGN KEY (gerente) REFERENCES funcionarios (id)
+);
+
+INSERT INTO funcionarios (nome, gerente) VALUES('Acelmo',null);
+INSERT INTO funcionarios (nome, gerente) VALUES('Beatriz',1);
+INSERT INTO funcionarios (nome, gerente) VALUES('Magno',1);
+INSERT INTO funcionarios (nome, gerente) VALUES('Cremilda',2);
+INSERT INTO funcionarios (nome, gerente) VALUES('Wagner',4);
+
+--O resultado é o Ancelmo
+SELECT id,nome,gerente FROM funcionarios WHERE gerente IS NULL
+
+--não retorna nada:
+SELECT id,nome,gerente FROM funcionarios WHERE id = 999
+
+RECURSIVE:
+
+--retorna a hierarquia correta:
+CREATE OR REPLACE RECURSIVE VIEW vw_funcionarios(id,gerente,funcionario) AS (
+SELECT id,gerente,nome
+FROM funcionarios
+WHERE gerente IS NULL -- retorna o id 1
+UNION ALL
+SELECT funcionarios.id,funcionarios.gerente,funcionarios.nome
+FROM funcionarios
+JOIN vw_funcionarios ON vw_funcionarios.id = funcionarios.gerente
+);
+
+SELECT id,gerente,funcionario
+FROM vw_funcionarios
+
+--
+
+--Consulta mais inteligente:
+--Converte o campo vazio em VARCHAR chamando de gerente
+-- faz mais um join de funcionarios, onde o id é igual ao id da view. traz somente o nome do gerente e o nome do funcionario:
+
+CREATE OR REPLACE RECURSIVE VIEW vw_funcionarios(id, gerente, funcionario) AS (
+SELECT id, CAST('' AS VARCHAR) AS gerente, nome 
+FROM funcionarios
+WHERE gerente IS NULL -- retorna o id 1
+UNION ALL
+SELECT funcionarios.id,gerentes.nome,funcionarios.nome
+FROM funcionarios
+JOIN vw_funcionarios ON vw_funcionarios.id = funcionarios.gerente
+JOIN funcionarios gerentes ON gerentes.id = vw_funcionarios.id
+);
+
+SELECT id,gerente,funcionario
+FROM vw_funcionarios
+ 
+---
+
+WITH OPTIONS
+
+--Resultado OK:
+CREATE OR REPLACE VIEW vw_banco AS (
+SELECT numero, nome, ativo
+FROM banco
+);
+
+INSERT INTO vw_bancos(numero,nome,ativo) VALUES (100, 'Banco CEM',FALSE)
+
+--Resultado ERRO:
+CREATE OR REPLACE VIEW vw_banco AS (
+SELECT numero, nome, ativo
+FROM banco
+WHERE ativo IS TRUE - verifica o ativo da view
+) WITH LOCAL CHECK OPTION; --quero validar opões da view presente
+
+INSERT INTO vw_bancos (numero, nome, ativo) VALUES (100, 'Banco CEM',FALSE) - campo ativo false
+
+--
+COM ERRO:
+
+CREATE OR REPLACE VIEW vw_banco_ativo AS (
+SELECT numero, nome, ativo
+FROM banco
+WHERE ativo IS TRUE --ERRO
+) WITH LOCAL CHECK OPTION;  --ERRO
+
+CREATE OR REPLACE VIEW vw_bancos_maiores_que_100 AS (
+SELECT numero, nome, ativo
+FROM vw_banco
+WHERE numero > 100
+) WITH LOCAL CHECK OPTION; --ERRO
+
+--ERRO (99 é menor que 100):
+INSERT INTO vw_bancos_maiores_que_100 (numero, nome, ativo) VALUES (99, 'Banco DIO',FALSE)
+
+--ERRO (tmb da erro pq o ativo está FALSE) :
+INSERT INTO vw_bancos_maiores_que_100 (numero, nome, ativo) VALUES (200, 'Banco DIO',FALSE)
+
+
+---
+
+
+COM SEGUNDO INSERT OK:
+
+CREATE OR REPLACE VIEW vw_banco_ativo AS (
+SELECT numero, nome, ativo
+FROM banco
+WHERE ativo IS TRUE
+); 
+
+CREATE OR REPLACE VIEW vw_bancos_maiores_que_100 AS (
+SELECT numero, nome, ativo
+FROM vw_banco
+WHERE numero > 100
+) WITH LOCAL CHECK OPTION;
+
+--ERRO (99 é menor que 100):
+INSERT INTO vw_bancos_maiores_que_100 (numero, nome, ativo) VALUES (99, 'Banco DIO',FALSE)
+
+--SEM ERRO  :
+INSERT INTO vw_bancos_maiores_que_100 (numero, nome, ativo) VALUES (200, 'Banco DIO',FALSE)
+
+---
+
+
+COM SEGUNDO INSERT OK:
+
+CREATE OR REPLACE VIEW vw_banco_ativo AS (
+SELECT numero, nome, ativo
+FROM banco
+WHERE ativo IS TRUE
+); 
+
+CREATE OR REPLACE VIEW vw_bancos_maiores_que_100 AS (
+SELECT numero, nome, ativo
+FROM vw_banco
+WHERE numero > 100
+) WITH CASCADED CHECK OPTION; --valida as opções da view atual e as views q faz referencia.
+
+--ERRO (99 é menor que 100):
+INSERT INTO vw_bancos_maiores_que_100 (numero, nome, ativo) VALUES (99, 'Banco DIO',FALSE)
+
+--ERRO  :
+INSERT INTO vw_bancos_maiores_que_100 (numero, nome, ativo) VALUES (200, 'Banco DIO',FALSE)
+
+
+
+-----
+
+DESAFIO:  RETORNANDO O NOME DO SEU GERENTE
+
+
+=============
+
+TRANSAÇÕES
+
+Conceito fundamental de todos os sistemas de bancos de dados. Conceito de multiplas etapas/codigos reunidos em apenas 1 transacao, onde o resultado precisa ser tudo ou nada.
+
+Se acontece qualquer erro, desfaz tudo no comando realizado.
+
+BEGIN
+
+SAVEPOINT my_savepoint;
+
+ROLLBACK TO my_savepoint;
+--Caso acionado ignora tudo desde o savepoint
+
+COMMIT;
+
+=============
+
+
+FUNÇÕES:
+
+Conjunto de codigos que sao executados dentro de uma transação com a finalidade de facilitar a programação e obter o reaproveitamento /reutilização de codigos.
+
+Existem 4 tipos de funções:
+-query language functions (funcoes em SQL)
+-Procedural language functions (funções escritas em PL/pgSQL ou PL/py, etc)
+- internal functions (internas do PostgresSQL)
+-C-language functions
+
+USER DEFINED FUNCTIONS
+Funções que podem ser criadas pelo usuário:
+
+Linguagens: (SQL OU PROCEDURAL)
+SQL
+PL/PGSQL 
+PL/PY
+PL/PHP
+PL/RUBY
+PL/Java
+PL/Lua
+
+www.postgresql.org/docs/11/external-pl.html
+
+--
+
+O comando é robusto e tem diversas opções.
+
+IDEMPOTÊNCIA
+Previne erros, da segurança, traz melhor pratica de programação.
+
+------
+CREATE OR REPLACE FUNCTION nomedafunção
+-Precisa ter o mesmo nome na função
+-Precisa ter o mesmo tipo de retorno
+-Precisa ter o mesmo número de parâmetros/argumentos
+
+------
+RETURNS
+Tipo de retorno (data type)
+INTERGER
+CHAR/VARCHAR
+BOOLEAN
+ROW
+TABLE
+JSON
+
+----
+LANGUAGE
+SQL
+PLPGSQL
+PLJAVA
+PLPY
+
+-----
+SEGURANÇA
+
+SECURITY
+	INVOKER (permite ser executada com as permissões do usuário, caso não tenha, será erro)
+	DEFINER --o usuario que está executando com as permissões de quem criou --PERIGOSO , em alguns casos necessário
+
+-----
+
+COMPORTAMENTO
+
+IMMUTABLE
+Não pode alterar o banco de dados. Funções que garantem o mesmo resultado para os mesmos argumentos/paramentos da função. Evitar a utilização de selects, pois tabelas podem sofrer alterações.
+
+STABLE
+Semelhante ao IMMUTABLE. Não pode alterar o banco de dados. Funções que garantem o mesmo resultado para os mesmos argumentos/parametros da função. Trabnalha melhor com tipos de current_timestamp e outros tipos de variaveis. Pode conter selects.
+
+VOLLATILLE 
+Comportamento padrão. Aceita todos os cenários
+
+----
+
+SEGURANÇA E BOAS PRATICAS
+
+-CALLED ON NULL INPUT
+Padrão. Se qualquer um dos paramentos/argumentos for NULL, a função será executada.
+
+-RETURNS NULL ON NULL INPUT
+Se qualquer argumento dos parâmentros /argumentos for NUL , a função retornará NULL. Se não quiser fazer tratamento campo por campo.
+
+----
+
+
+RECURSOS 
+-COST
+Custo/row em unidades de CPU. Custo de cada row padrão.
+
+-ROWS
+Numero estimado de linhas que será analisada pelo planner. Planejador de consultas. se é mais facil fazer por fullscan, etc.
+
+------
+
+SQL FUNCTIONS
+
+--Não é possivel utilizar TRANSAÇÕES (BEGIN=ERRO)
+
+CREATE OR REPLACE FUNCION fc_somar(INTEGER,INTEGER)
+RETURNS INTEGER
+LANGUAGE SQL
+AS $$  --$$significa que é o corpo da função, onde inicia e finaliza com ele.
+	SELECT $1 + $2; --$1 primeiro parametro/$2 segundo parametro
+$$;
+
+--OU MESMO RESULTADO:
+
+CREATE OR REPLACE FUNCION fc_somar(num1 INTEGER,num2 INTEGER)
+RETURNS INTEGER
+LANGUAGE SQL
+AS $$
+	SELECT num1 + num2; 
+$$;
+
+
+--adicionando um banco no projeto agencia:
+CREATE OR REPLACE FUNCTION fc_bancos_add(p_numero INTEGER,p_nome VARCHAR,p_ativo BOOLEAN)
+RETURNS TABLE (numero INTEGER,nome VARCHAR) --tabela temporaria p retornar tipo de dado.
+RETURNS NULL ON NULL INPUT --qualquer padrametro null a função nao é executada
+LANGUAGE SQL
+AS $$
+	--insere:
+	INSERT INTO banco (numero, nome, ativo)
+	VALUES (p_numero, p_nome, p_ativo);
+
+	--retorna o resultado:
+	SELECT numero, nome
+	FROM banco
+	WHERE numero = p_numero;
+$$;
+
+PLPGSQL
+--prefira funções que aceitem transações, por segurança.
+
+CREATE OR REPLACE FUNCTION banco_add(p_numero INTEGER,p_nome VARCHAR,p_ativo BOOLEAN
+RETURNS BOOLEAN
+LANGUAGE PLPGSQL
+AS $$
+DECLARE variavel_id INTEGER;
+BEGIN
+	SELECT INTO variavel_id numero FROM banco WHERE nome = p_nome;
+	IF variavel_id IS NULL THEN
+		INSERT INTO banco(numero, nome, ativo) VALUES (p_numero, p_nome, p_ativo);
+	ELSE
+		RETURN FALSE;
+	END IF;
+
+	SELECT INTO variavel_id numero FROM banco WHERE nome = p_nome; --validação
+
+	IF variavel_id IS NULL THEN
+		RETURN FALSE;
+	ELSE
+		RETURN FALSE;
+	END IF;
+END; $$;
+
+SELECT banco_add(13, 'Banco do Trabalhadores',true);
+
+
+
+------
+
+FUNÇÕES DISPONIVEIS NO GIT
+
+
+
+
+
+
