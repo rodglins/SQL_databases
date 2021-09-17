@@ -1,0 +1,100 @@
+Techstreet
+
+localhost:1521
+localhost:1521/XEPDB1
+https://localhost:5500/em
+
+
+------------------------------------
+acessando sql:
+
+sqlplus -l system/SENHA@192.168.0.10:1521/xe
+
+
+-------------------
+
+criando nome de usuario no SQL Plus:
+
+
+define USERNAME = rodglins
+
+create user &USERNAME;
+
+alter user &USERNAME
+    default tablespace users
+    temporary tablespace temp
+    quota unlimited on users;
+
+grant create session,
+    create view,
+    create sequence,
+    create procedure,
+    create table,
+    create trigger,
+    create type,
+    create materialized view
+    to &USERNAME;
+
+----
+ criando senha para login (senha será ????):
+
+alter user rodglins identified by SENHA;
+
+
+----
+
+
+
+
+
+https://cx-oracle.readthedocs.io/en/latest/user_guide/installation.html
+https://cx-oracle.readthedocs.io/en/latest/user_guide/installation.html#wininstall
+
+ C:\Users\rodgl\AppData\Local\Temp\OraInstall2021-06-15_05-50-20PM\launcher2021-06-15_05-50-20PM.log
+
+
+RrR
+
+SYS , SYSTEM, PDBADMIN
+SENHA: ????
+
+--
+
+senha admin:???
+
+
+
+
+--
+
+C:\Users\rodgl\AppData\Local\Temp\OraInstall2021-06-18_11-35-30AM\
+
+--
+
+
+novo banco global: XE
+sid: XE
+
+banco de dados plugavel: pdb
+
+LISTENER
+
+pass: ????
+
+SYS SYSTEM  : ????
+
+PDBADMIN: ????
+
+---
+
+login sql:
+
+????
+-----
+
+
+
+
+
+--
+

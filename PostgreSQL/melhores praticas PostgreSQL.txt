@@ -1556,3 +1556,29 @@ FUNÇÕES DISPONIVEIS NO GIT
 
 
 
+Na consulta abaixo:
+
+SELECT COUNT(id), nome
+FROM cliente
+WHERE nome ILIKE ‘José’;
+
+O comando… :
+
+Resultará em erro porque o campo nome deve ser agrupado usando o comando GROUP BY, uma vez que a função de agregação COUNT agrupa o ID.
+
+Indique a alternativa que apresenta três características do PostgreSQL:
+Suporte a dados geográficos (PostGIS), Linguagem procedural também em Python, Open source.
+
+porta 5432
+
+SECURITY DEFINER executa a função com as permissões do usuário que criou a função. SECURITY INVOKER executa a função com as permissões do usuário está executando a função.
+
+
+
+
+
+
+
+
+
+
