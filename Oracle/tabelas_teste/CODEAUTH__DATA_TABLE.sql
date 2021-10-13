@@ -1,0 +1,5 @@
+REM INSERTING into SYS.CODEAUTH$
+SET DEFINE OFF;
+Insert into SYS.CODEAUTH$ (OBJ#,PRIVILEGE#) values ('13813','38');
+Insert into SYS.CODEAUTH$ (OBJ#,PRIVILEGE#) values ('22197','26');
+Insert into SYS.CODEAUTH$ (OBJ#,PRIVILEGE#) values ('22197','27');

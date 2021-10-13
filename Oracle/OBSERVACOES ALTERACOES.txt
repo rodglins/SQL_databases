@@ -1,0 +1,357 @@
+
+
+ADICIONANDO UMA COLUNA NA TABELA:
+ALTER TABLE STG_T_SV_PRODUTO
+ADD DS_MARCA varchar(255) NOT NULL;
+
+ADICIONANDO UMA COLUNA NA TABELA:
+ALTER TABLE FATO_VENDAS_C
+ADD SK_DATA NUMBER(9) NOT NULL;
+
+INSERINDO DADOS:
+INSERT INTO STG_T_SV_PRODUTO 
+    (CD_PRODUTO, CD_UNIDADE_MEDIDA, DS_PRODUTO, DS_COMPLETA_PRODUTO, VL_PRECO_UNITARIO, DS_MARCA) 
+  VALUES 
+    (7,1,'NOTEBOOK SENSACIONAL', 'NOTEBOOK XPTO ESPECIAL', 1980.56, 'XPTO');
+
+EFETIVANDO A ALTERAÇÃO:
+COMMIT;
+
+ALTERANDO A COLUNA COMO NOT NULL:
+ALTER TABLE STG_T_SV_PRODUTO
+MODIFY DS_MARCA int NOT NULL;
+
+APAGANDO A TABELA:
+DROP TABLE T_SV_PRODUTO CASCADE CONSTRAINTS;
+
+
+
+
+
+CREATE TABLE T_SV_PRODUTO (
+    CD_PRODUTO            NUMBER(6) NOT NULL,
+    CD_UNIDADE_MEDIDA     NUMBER NOT NULL,
+    DS_PRODUTO            VARCHAR2(20 BYTE) NOT NULL,
+    DS_COMPLETA_PRODUTO   VARCHAR2(128 BYTE) NOT NULL,
+    VL_PRECO_UNITARIO     NUMBER(6,2) NOT NULL,
+    DS_MARCA              VARCHAR2(255 BYTE) NOT NULL	
+);
+
+ALTER TABLE T_SV_PRODUTO ADD CONSTRAINT CK_SV_PROD_PRECO CHECK (
+    VL_PRECO_UNITARIO > 0
+);
+
+CREATE UNIQUE INDEX DS_PRODUTO_UN ON
+    T_SV_PRODUTO ( DS_PRODUTO ASC );
+
+CREATE UNIQUE INDEX T_SV_PRODUTO_PK ON
+    T_SV_PRODUTO ( CD_PRODUTO ASC );
+
+ALTER TABLE T_SV_PRODUTO ADD CONSTRAINT T_SV_PRODUTO_PK PRIMARY KEY ( CD_PRODUTO );
+
+ALTER TABLE T_SV_PRODUTO ADD CONSTRAINT T_SV_PRODUTO_DS_PRODUTO_UN UNIQUE ( DS_PRODUTO );
+
+ALTER TABLE T_SV_PRODUTO ADD CONSTRAINT T_SV_UNIDADE_MEDIDA_FK FOREIGN KEY ( CD_UNIDADE_MEDIDA )
+    REFERENCES T_SV_UNIDADE_MEDIDA ( CD_UNIDADE_MEDIDA );
+	
+
+-- INSERINDO DADOS NA TABELA PRODUTO
+INSERT INTO T_SV_PRODUTO 
+    (CD_PRODUTO, CD_UNIDADE_MEDIDA, DS_PRODUTO, DS_COMPLETA_PRODUTO, VL_PRECO_UNITARIO, DS_MARCA) 
+  VALUES 
+    (1,1,'NOTEBOOK SENSACIONAL', 'NOTEBOOK XPTO ESPECIAL', 1980.56, 'XPTO');
+
+INSERT INTO T_SV_PRODUTO 
+    (CD_PRODUTO, CD_UNIDADE_MEDIDA,DS_PRODUTO,DS_COMPLETA_PRODUTO,VL_PRECO_UNITARIO,DS_MARCA)  
+  VALUES 
+    (2,1, 'IMPRESSORA X3', 'IMPRESSORA MULTIFUNCIONAL HP', 432.89, 'XPTO');
+
+INSERT INTO T_SV_PRODUTO 
+    (CD_PRODUTO, CD_UNIDADE_MEDIDA,DS_PRODUTO,DS_COMPLETA_PRODUTO,VL_PRECO_UNITARIO,DS_MARCA)  
+  VALUES 
+    (3,1, 'PEN DRIVE - 16GB', 'PEN DRIVE 16GB KINGSTON', 60.00, 'XPTO');
+    
+INSERT INTO T_SV_PRODUTO 
+    (CD_PRODUTO, CD_UNIDADE_MEDIDA,DS_PRODUTO,DS_COMPLETA_PRODUTO,VL_PRECO_UNITARIO,DS_MARCA)  
+  VALUES 
+    (4,1, 'PEN DRIVE - 32GB', 'PEN DRIVE 32GB KINGSTON', 108.00, 'XPTO');
+    
+INSERT INTO T_SV_PRODUTO 
+    (CD_PRODUTO, CD_UNIDADE_MEDIDA,DS_PRODUTO,DS_COMPLETA_PRODUTO,VL_PRECO_UNITARIO,DS_MARCA)  
+  VALUES 
+    (5,1, 'HD EXTERNO - 500GB', 'HD EXTERNO SAMSUNG - 500 GB', 305.00, 'XPTO');
+
+INSERT INTO T_SV_PRODUTO 
+    (CD_PRODUTO, CD_UNIDADE_MEDIDA,DS_PRODUTO,DS_COMPLETA_PRODUTO,VL_PRECO_UNITARIO,DS_MARCA)   
+  VALUES 
+    (6,1, 'HD EXTERNO - 1TB', 'HD EXTERNO SAMSUNG -1 TB', 870.00, 'XPTO');  
+  
+-- EFETIVANDO AS TRANSAÇÕES DE INSERÇÃO NA TABELA
+COMMIT;
+
+
+
+---------------------------
+
+
+CRIANDO AS TABELAS NA STAGING AREA PARA CÓPIA DOS DADOS SV E ARQUIVOS:
+
+SCRIPT SQL VIA SQLPLUS::
+
+
+
+
+DROP TABLE STG_T_SV_PRODUTO CASCADE CONSTRAINTS;
+CREATE TABLE STG_T_SV_PRODUTO AS SELECT * FROM T_SV_PRODUTO WHERE ROWNUM < 1;
+
+
+
+-----
+
+TRANSFORMAÇÃO DE VENDAS:
+
+SELECT  NF.NR_NOTA_FISCAL,
+NF.CD_CLIENTE,
+NF.NR_MATRICULA,
+TO_CHAR(NF.DT_EMISSAO, 'YYYYMMDD') AS SK_DATA,
+NF.DT_EMISSAO,
+NF.VL_TOTAL_NF,
+NF.CD_LOJA,
+NF.CD_PROMOCAO,
+INF.CD_PRODUTO,
+INF.QT_VENDIDA,
+INF.VL_PRECO_UNITARIO
+FROM    STG_T_SV_NOTA_FISCAL NF,
+STG_T_SV_ITEM_NOTA_FISCAL INF
+WHERE NF.NR_NOTA_FISCAL = INF.NR_NOTA_FISCAL
+
+
+---
+
+
+SELECT * FROM DIM_VENDA_CLIENTE;
+
+--
+
+
+UPDATE DIM_VENDA_CLIENTE SET 	
+NM_CLIENTE = 'CLIENTE NÃO ENCONTRADO', 
+NM_TIPO = 'DESCONHECIDO', 
+DS_TIPO = 'DESCONHECIDO ' 
+WHERE 
+SK_CLIENTE = 0;
+
+
+--
+
+
+
+
+SCRIPT DDL:
+
+
+/*
+DROP TABLE DIM_VENDA_VENDEDOR CASCADE CONSTRAINTS;
+
+*/
+
+CREATE TABLE DIM_VENDA_VENDEDOR (
+    SK_VENDEDOR            NUMBER(9) PRIMARY KEY,
+    NK_VENDEDOR            NUMBER(9),
+    NM_VENDEDOR            VARCHAR2(60),
+    DT_NASCIMENTO          DATE,
+    DS_SEXO                CHAR(9),
+    DT_CONTRATACAO         DATE,
+    CD_FAIXA_BONIFICACAO   NUMBER(2),
+    DS_FAIXA_BONIFICACAO   VARCHAR2(50),
+    DTC_INI                DATE,
+    DTC_FIM                DATE,
+    VERSION                NUMBER(11)
+);
+
+ALTER TABLE FATO_VENDAS ADD CONSTRAINT FAT_VENDAS_VENDEDOR_FK FOREIGN KEY ( SK_VENDEDOR )
+    REFERENCES DIM_VENDA_VENDEDOR ( SK_VENDEDOR );
+
+
+COMMIT;
+
+===============
+
+ALTERANDO O FORMATO DA BASE DE DADOS:
+NLS_DATE_FORMAT = ‘DD/MM/YY HH24:MI:SS’ 
+
+
+Formatação padrão de data do SQL Developer
+ NLS_DATE_FORMAT.
+
+Para verificar a formatação atual para datas:
+SELECT value FROM v$nls_parameters WHERE parameter ='NLS_DATE_FORMAT';
+Exemplo:
+Date Format
+
+Para alterar o valor do NLS_DATE_FORMAT:
+ALTER SESSION SET NLS_DATE_FORMAT = 'DD/MM/YYYY HH24:MI:SS';
+
+Com o SQL Developer aberto, vá em Ferramentas (Tools) -> Preferências (Preferences) -> Banco de Dados (Databases) -> NLS. 
+
+
+=====================
+
+
+CREATE TABLE DIM_VENDA_DATA (
+    SK_DATA               INT  PRIMARY KEY,
+    DATA                  DATE NOT NULL,
+    ANO                   SMALLINT NOT NULL,
+    MES                   SMALLINT NOT NULL,
+    DIA                   SMALLINT NOT NULL,
+    DIA_SEMANA            SMALLINT NOT NULL,
+    DIA_ANO               SMALLINT NOT NULL,
+    ANO_BISSEXTO          CHAR(1) NOT NULL,
+    DIA_UTIL              CHAR(1) NOT NULL,
+    FIM_SEMANA            CHAR(1) NOT NULL,
+    FERIADO               CHAR(1) NOT NULL,
+    PRE_FERIADO           CHAR(1) NOT NULL,
+    POS_FERIADO           CHAR(1) NOT NULL,
+    NOME_FERIADO          VARCHAR(30) NULL,
+    NOME_DIA_SEMANA       VARCHAR(15) NOT NULL,
+    NOME_DIA_SEMANA_ABREV CHAR(3) NOT NULL,
+    NOME_MES              VARCHAR(15) NOT NULL,
+    NOME_MES_ABREV        CHAR(3) NOT NULL,
+    QUINZENA              SMALLINT NOT NULL,
+    BIMESTRE              SMALLINT NOT NULL,
+    TRIMESTRE             SMALLINT NOT NULL,
+    SEMESTRE              SMALLINT NOT NULL,
+    NR_SEMANA_MES         SMALLINT NOT NULL,
+    NR_SEMANA_ANO         SMALLINT NOT NULL,
+    ESTACAO_ANO           VARCHAR(15) NOT NULL,
+    DATA_POR_EXTENSO      VARCHAR(50) NOT NULL,
+    EVENTO                VARCHAR(50) NULL
+);
+
+DECLARE   p_dataInicial           DATE;
+          p_dataFinal             DATE;
+          p_data                  DATE;
+          p_ano                   SMALLINT;
+          p_mes                   SMALLINT;
+          p_dia                   SMALLINT;
+          p_diaSemana             SMALLINT;
+          p_diaAno                SMALLINT;
+          p_diaUtil               CHAR(1);
+          p_fimSemana             CHAR(1);
+          p_feriado               CHAR(1);
+          p_preFeriado            CHAR(1);
+          p_posFeriado            CHAR(1);
+          p_nomeFeriado           VARCHAR(30);
+          p_nomeDiaSemana         VARCHAR(15);
+          p_nomeDiaSemanaAbrev    CHAR(3);
+          p_nomeMes               VARCHAR(15);
+          p_nomeMesAbrev          CHAR(3);
+          p_bimestre              SMALLINT;
+          p_trimestre             SMALLINT;
+          p_nrSemanaMes           SMALLINT;
+          p_estacaoAno            VARCHAR(15);
+          p_dataPorExtenso        VARCHAR(50);
+          p_skData                INTEGER;
+);
+
+CREATE SEQUENCE DIM_VENDA_DATA_alt_id_seq
+  START WITH 1000000;
+
+CREATE OR REPLACE PROCEDURE data_ins
+  (  p_data                 IN DIM_VENDA_DATA.DATA%DATE 
+   , p_ano                  IN DIM_VENDA_DATA.ANO%SMALLINT 
+   , p_mes                  IN DIM_VENDA_DATA.MES%SMALLINT
+   , p_dia                  IN DIM_VENDA_DATA.DIA%SMALLINT
+   , p_diaSemana            IN DIM_VENDA_DATA.DIA_SEMANA%SMALLINT
+   , p_diaAno               IN DIM_VENDA_DATA.ANO_BISSEXTO%SMALLINT
+   , p_ANO_BISSEXTO         IN DIM_VENDA_DATA.ANO_BISSEXTO%SMALLINT
+   , p_diaUtil              IN DIM_VENDA_DATA.DIA_UTIL%CHAR(1)
+   , p_fimSemana            IN DIM_VENDA_DATA.FIM_SEMANA%CHAR(1)
+   , p_feriado              IN DIM_VENDA_DATA.FERIADO%CHAR(1)
+   , p_preFeriado           IN DIM_VENDA_DATA.PRE_FERIADO%CHAR(1)
+   , p_posFeriado           IN DIM_VENDA_DATA.POS_FERIADO%CHAR(1)
+   , p_nomeFeriado          IN DIM_VENDA_DATA.NOME_FERIADO%VARCHAR(30)
+   , p_nomeDiaSemana        IN DIM_VENDA_DATA.NOME_DIA_SEMANA%VARCHAR(15)
+   , p_nomeDiaSemanaAbrev   IN DIM_VENDA_DATA.NOME_DIA_SEMANA_ABREV%CHAR(3)
+   , p_nomeMes              IN DIM_VENDA_DATA.NOME_MES%VARCHAR(15)
+   , p_nomeMesAbrev         IN DIM_VENDA_DATA.NOME_MES_ABREV%CHAR(3)
+   , p_QUINZENA             IN DIM_VENDA_DATA.QUINZENA%SMALLINT
+   , p_bimestre             IN DIM_VENDA_DATA.BIMESTRE%SMALLINT
+   , p_trimestre            IN DIM_VENDA_DATA.TRIMESTRE%SMALLINT
+   , p_nrSemanaMes          IN DIM_VENDA_DATA.NR_SEMANA_MES%SMALLINT
+   , p_estacaoAno           IN DIM_VENDA_DATA.ESTACAO_ANO%VARCHAR(15)
+   , p_dataPorExtenso       IN DIM_VENDA_DATA.resp%VARCHAR(50)
+   , p_EVENTO               IN DIM_VENDA_DATA.EVENTO%VARCHAR(50)
+   , p_skData               IN DIM_VENDA_DATA.SK_DATA%INTEGER )
+AS
+  v_is_duplicate INTEGER;
+BEGIN
+  SELECT count(*) INTO v_is_duplicate FROM components WHERE SK_DATA = p_skData;
+  IF v_duplicate = 0 THEN
+    INSERT INTO DIM_VENDA_DATA (SK_DATA, DATA, ANO , MES, DIA, DIA_SEMANA, DIA_ANO, ANO_BISSEXTO, DIA_UTIL , FIM_SEMANA, FERIADO, PRE_FERIADO, POS_FERIADO, NOME_FERIADO, NOME_DIA_SEMANA, NOME_DIA_SEMANA_ABREV, NOME_MES, NOME_MES_ABREV, QUINZENA, BIMESTRE, TRIMESTRE, SEMESTRE, NR_SEMANA_MES, NR_SEMANA_ANO, ESTACAO_ANO, DATA_POR_EXTENSO, EVENTO)
+      VALUES (p_skData, p_data, p_ano, p_mes, p_dia, p_diaSemana, p_diaAno, p_ANO_BISSEXTO, p_diaUtil, p_fimSemana, p_feriado, p_preFeriado, p_posFeriado, p_nomeFeriado, p_nomeDiaSemana, p_nomeDiaSemanaAbrev, p_nomeMes, p_nomeMesAbrev, p_QUINZENA, p_bimestre, p_trimestre, p_SEMESTRE, p_nrSemanaMes, p_NR_SEMANA_ANO, p_estacaoAno, p_dataPorExtenso, p_EVENTO);
+  ELSE
+    INSERT INTO DIM_VENDA_DATA (SK_DATA, DATA, ANO , MES, DIA, DIA_SEMANA, DIA_ANO, ANO_BISSEXTO, DIA_UTIL , FIM_SEMANA, FERIADO, PRE_FERIADO, POS_FERIADO, NOME_FERIADO, NOME_DIA_SEMANA, NOME_DIA_SEMANA_ABREV, NOME_MES, NOME_MES_ABREV, QUINZENA, BIMESTRE, TRIMESTRE, SEMESTRE, NR_SEMANA_MES, NR_SEMANA_ANO, ESTACAO_ANO, DATA_POR_EXTENSO, EVENTO)
+      VALUES (DIM_VENDA_DATA_alt_id_seq.NEXTVAL, p_data, p_ano, p_mes, p_dia, p_diaSemana, p_diaAno, p_ANO_BISSEXTO, p_diaUtil, p_fimSemana, p_feriado, p_preFeriado, p_posFeriado, p_nomeFeriado, p_nomeDiaSemana, p_nomeDiaSemanaAbrev, p_nomeMes, p_nomeMesAbrev, p_QUINZENA, p_bimestre, p_trimestre, p_SEMESTRE, p_nrSemanaMes, p_NR_SEMANA_ANO, p_estacaoAno, p_dataPorExtenso, p_EVENTO);
+  END IF;
+END;
+/
+
+EXEC data_ins 
+
+
+
+===============
+
+
+CREATE OR REPLACE PROCEDURE data_ins
+  (  
+     p_data                 IN DIM_VENDA_DATA.DATA%DATE 
+   , p_ano                  IN DIM_VENDA_DATA.ANO%SMALLINT 
+   , p_mes                  IN DIM_VENDA_DATA.MES%SMALLINT
+   , p_dia                  IN DIM_VENDA_DATA.DIA%SMALLINT
+   , p_diaSemana            IN DIM_VENDA_DATA.DIA_SEMANA%SMALLINT
+   , p_diaAno               IN DIM_VENDA_DATA.DIA_ANO%SMALLINT
+   , p_ANO_BISSEXTO         IN DIM_VENDA_DATA.ANO_BISSEXTO%CHAR(1)
+   , p_diaUtil              IN DIM_VENDA_DATA.DIA_UTIL%CHAR(1)
+   , p_fimSemana            IN DIM_VENDA_DATA.FIM_SEMANA%CHAR(1)
+   , p_feriado              IN DIM_VENDA_DATA.FERIADO%CHAR(1)
+   , p_preFeriado           IN DIM_VENDA_DATA.PRE_FERIADO%CHAR(1)
+   , p_posFeriado           IN DIM_VENDA_DATA.POS_FERIADO%CHAR(1)
+   , p_nomeFeriado          IN DIM_VENDA_DATA.NOME_FERIADO%VARCHAR(30)
+   , p_nomeDiaSemana        IN DIM_VENDA_DATA.NOME_DIA_SEMANA%VARCHAR(15)
+   , p_nomeDiaSemanaAbrev   IN DIM_VENDA_DATA.NOME_DIA_SEMANA_ABREV%CHAR(3)
+   , p_nomeMes              IN DIM_VENDA_DATA.NOME_MES%VARCHAR(15)
+   , p_nomeMesAbrev         IN DIM_VENDA_DATA.NOME_MES_ABREV%CHAR(3)
+   , p_QUINZENA             IN DIM_VENDA_DATA.QUINZENA%SMALLINT
+   , p_bimestre             IN DIM_VENDA_DATA.BIMESTRE%SMALLINT
+   , p_trimestre            IN DIM_VENDA_DATA.TRIMESTRE%SMALLINT
+   , p_nrSemanaMes          IN DIM_VENDA_DATA.NR_SEMANA_MES%SMALLINT
+   , p_estacaoAno           IN DIM_VENDA_DATA.ESTACAO_ANO%VARCHAR(15)
+   , p_dataPorExtenso       IN DIM_VENDA_DATA.DATA_POR_EXTENSO%VARCHAR(50)
+   , p_EVENTO               IN DIM_VENDA_DATA.EVENTO%VARCHAR(50)
+   , p_skData               IN DIM_VENDA_DATA.SK_DATA%INTEGER 
+   )
+AS
+  v_is_duplicate INTEGER;
+BEGIN
+  SELECT count(*) INTO v_is_duplicate FROM components WHERE SK_DATA = p_skData;
+  IF v_duplicate = 0 THEN
+    INSERT INTO DIM_VENDA_DATA (SK_DATA, DATA, ANO , MES, DIA, DIA_SEMANA, DIA_ANO, ANO_BISSEXTO, DIA_UTIL , FIM_SEMANA, FERIADO, PRE_FERIADO, POS_FERIADO, NOME_FERIADO, NOME_DIA_SEMANA, NOME_DIA_SEMANA_ABREV, NOME_MES, NOME_MES_ABREV, QUINZENA, BIMESTRE, TRIMESTRE, SEMESTRE, NR_SEMANA_MES, NR_SEMANA_ANO, ESTACAO_ANO, DATA_POR_EXTENSO, EVENTO)
+      VALUES (p_skData, p_data, p_ano, p_mes, p_dia, p_diaSemana, p_diaAno, p_ANO_BISSEXTO, p_diaUtil, p_fimSemana, p_feriado, p_preFeriado, p_posFeriado, p_nomeFeriado, p_nomeDiaSemana, p_nomeDiaSemanaAbrev, p_nomeMes, p_nomeMesAbrev, p_QUINZENA, p_bimestre, p_trimestre, p_SEMESTRE, p_nrSemanaMes, p_NR_SEMANA_ANO, p_estacaoAno, p_dataPorExtenso, p_EVENTO);
+  ELSE
+    INSERT INTO DIM_VENDA_DATA (SK_DATA, DATA, ANO , MES, DIA, DIA_SEMANA, DIA_ANO, ANO_BISSEXTO, DIA_UTIL , FIM_SEMANA, FERIADO, PRE_FERIADO, POS_FERIADO, NOME_FERIADO, NOME_DIA_SEMANA, NOME_DIA_SEMANA_ABREV, NOME_MES, NOME_MES_ABREV, QUINZENA, BIMESTRE, TRIMESTRE, SEMESTRE, NR_SEMANA_MES, NR_SEMANA_ANO, ESTACAO_ANO, DATA_POR_EXTENSO, EVENTO)
+      VALUES (DIM_VENDA_DATA_alt_id_seq.NEXTVAL, p_data, p_ano, p_mes, p_dia, p_diaSemana, p_diaAno, p_ANO_BISSEXTO, p_diaUtil, p_fimSemana, p_feriado, p_preFeriado, p_posFeriado, p_nomeFeriado, p_nomeDiaSemana, p_nomeDiaSemanaAbrev, p_nomeMes, p_nomeMesAbrev, p_QUINZENA, p_bimestre, p_trimestre, p_SEMESTRE, p_nrSemanaMes, p_NR_SEMANA_ANO, p_estacaoAno, p_dataPorExtenso, p_EVENTO);
+  END IF;
+END;
+/
+
+
+---
+limpar o cache:
+
+alter system flush buffer_cache;
+
+
+
+-----
